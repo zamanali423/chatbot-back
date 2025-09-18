@@ -6,6 +6,8 @@ export class AppService {
   constructor(private readonly configService: ConfigService) {}
 
   getDbUrl(): string {
-    return this.configService.get<string>('MONGO_URI') || '';
+    return (
+      this.configService.get<string>('MONGO_URI') || 'No DB URL configured'
+    );
   }
 }
