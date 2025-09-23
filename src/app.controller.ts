@@ -7,7 +7,7 @@ export class AppController {
 
   @Get()
   getHello(): string {
-    return '🚀 Chatbot Scraper API is running!';
+    return '🚀 Chatbot server API is running!';
   }
   
   @Get()
