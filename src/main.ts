@@ -6,7 +6,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'https://chatbot-frontend-chi-six.vercel.app/', // frontend URL
+    // origin: 'https://chatbot-frontend-chi-six.vercel.app',
+    origin: 'http://localhost:3000',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // if you are sending cookies or auth headers
   });
@@ -21,7 +22,4 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 8080);
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
-if (process.env.NODE_ENV !== 'production') {
-  bootstrap();
-}
-
+bootstrap();

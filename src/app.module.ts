@@ -6,10 +6,10 @@ import { UsersModule } from './users/users.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import * as Joi from 'joi';
-import { ChatGateway } from './websockets/chat.gateway';
-import { Chat, ChatSchema } from './websockets/chats/schemas/chat.schema';
-import { ChatService } from './websockets/chats/chat.service';
 import { ScraperModule } from './scraper/scraper.module';
+import { OpenAiService } from './openai/openai.service';
+import { OpenAiController } from './openai/openai.controller';
+import { OpenAiModule } from './openai/openai.module';
 
 @Module({
   imports: [
@@ -31,12 +31,12 @@ import { ScraperModule } from './scraper/scraper.module';
           'mongodb://localhost:27017/chatbot-scraping-integration',
       }),
     }),
-    MongooseModule.forFeature([{ name: Chat.name, schema: ChatSchema }]),
     UsersModule,
     AuthModule,
+    OpenAiModule,
     ScraperModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, ChatGateway, ChatService],
+  controllers: [AppController, OpenAiController],
+  providers: [AppService, OpenAiService],
 })
 export class AppModule {}
