@@ -38,6 +38,6 @@ export class OpenAiController {
 
   @Get('chat-history')
   async getChatHistory(@Query('websiteId') websiteId: string) {
-    return this.chatModel.find({ websiteId }).sort({ createdAt: -1 }).exec();
+    return this.chatModel.find({ websiteId }).sort({ createdAt: 1 }).exec();
   }
 }

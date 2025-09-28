@@ -31,6 +31,22 @@ export class OpenAiService {
 
     let context = '';
     if (scrapedData) {
+      const teamDetails = scrapedData.team
+        ?.map(
+          (member, i) => `
+        --- Team Member ${i + 1} ---
+        Name: ${member.name || 'N/A'}
+        Role: ${member.role || 'N/A'}
+        Email: ${member.email || 'N/A'}
+        Phone: ${member.phone || 'N/A'}
+        Address: ${member.address || 'N/A'}
+        Social Links:
+          Facebook: ${member.socialLinks?.facebook?.join(', ') || 'N/A'}
+          Instagram: ${member.socialLinks?.instagram?.join(', ') || 'N/A'}
+          LinkedIn: ${member.socialLinks?.linkedin?.join(', ') || 'N/A'}
+      `,
+        )
+        .join('\n');
       context = `
         Name: ${scrapedData.name || 'N/A'}
         Email: ${scrapedData.email || 'N/A'}
@@ -39,7 +55,8 @@ export class OpenAiService {
         About: ${scrapedData.about || 'N/A'}
         Headlines: ${scrapedData.headlines?.join(', ') || 'N/A'}
         Slogan: ${scrapedData.slogan || 'N/A'}
-        URL: ${scrapedData.url || 'N/A'}
+        Team:${teamDetails || 'N/A'}
+        Pages:${scrapedData.pages?.map((p) => p.texts).join(', ') || 'N/A'}
       `;
     }
 

@@ -8,12 +8,18 @@ export class ScraperController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get()
-  async scrape(@Req() req: any, @Query('url') url: string) {
-    if (!url) {
-      return { error: 'Please provide a valid ?url= parameter' };
+  async scrape(
+    @Req() req: any,
+    @Query('url') url: string,
+    @Query('category') category: string,
+  ) {
+    if (!url || !category) {
+      return {
+        error: 'Please provide a valid ?url= parameter or category=parameter',
+      };
     }
-    console.log('Scraping URL:', url);
-    return this.scraperService.scrapeWebsite(url, req?.user?.id);
+    console.log('Scraping URL:', url, category);
+    return this.scraperService.scrapeWebsite(url, req?.user?.id, category);
   }
 
   @UseGuards(AuthGuard('jwt'))
