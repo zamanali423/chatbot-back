@@ -10,6 +10,7 @@ import { ScraperModule } from './scraper/scraper.module';
 import { OpenAiService } from './openai/openai.service';
 import { OpenAiController } from './openai/openai.controller';
 import { OpenAiModule } from './openai/openai.module';
+import { OpenaiAssistantModule } from './openai_assistant/openai_assistant.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { OpenAiModule } from './openai/openai.module';
     AuthModule,
     OpenAiModule,
     ScraperModule,
+    OpenaiAssistantModule,
   ],
   controllers: [AppController, OpenAiController],
   providers: [AppService, OpenAiService],

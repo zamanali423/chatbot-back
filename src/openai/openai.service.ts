@@ -1,140 +1,138 @@
 // src/openai/openai.service.ts
-import { Injectable } from '@nestjs/common';
-import axios from 'axios';
+import { Injectable, Logger } from '@nestjs/common';
+import axios, { AxiosInstance } from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Chat } from './schemas/chat.schema';
 import { ScrapedData } from '../scraper/schemas/scraped-data.schema';
+import { OpenaiAssistantService } from '../openai_assistant/openai_assistant.service';
+import { NotFoundException } from '@nestjs/common';
+import type { Response } from 'express';
 
 @Injectable()
 export class OpenAiService {
-  private readonly apiUrl = 'https://api.openai.com/v1/chat/completions';
-  private readonly apiKey = process.env.OPENAI_API_KEY;
+  private readonly logger = new Logger(OpenAiService.name);
+  private readonly openai: AxiosInstance;
 
   constructor(
     @InjectModel(Chat.name) private chatModel: Model<Chat>,
     @InjectModel(ScrapedData.name) private scrapedDataModel: Model<ScrapedData>,
-  ) {}
-
-  async streamResponse(
-    message: string,
-    websiteId: string,
-    res: any,
-  ): Promise<void> {
-    let fullResponse = '';
-    let buffer = '';
-
-    // Get contextual scraped data
-    const scrapedData = await this.scrapedDataModel
-      .findOne({ url: websiteId })
-      .sort({ createdAt: -1 });
-
-    let context = '';
-    if (scrapedData) {
-      const teamDetails = scrapedData.team
-        ?.map(
-          (member, i) => `
-        --- Team Member ${i + 1} ---
-        Name: ${member.name || 'N/A'}
-        Role: ${member.role || 'N/A'}
-        Email: ${member.email || 'N/A'}
-        Phone: ${member.phone || 'N/A'}
-        Address: ${member.address || 'N/A'}
-        Social Links:
-          Facebook: ${member.socialLinks?.facebook?.join(', ') || 'N/A'}
-          Instagram: ${member.socialLinks?.instagram?.join(', ') || 'N/A'}
-          LinkedIn: ${member.socialLinks?.linkedin?.join(', ') || 'N/A'}
-      `,
-        )
-        .join('\n');
-      context = `
-        Name: ${scrapedData.name || 'N/A'}
-        Email: ${scrapedData.email || 'N/A'}
-        Phone: ${scrapedData.phone || 'N/A'}
-        Social Links: ${scrapedData.socialLinks?.join(', ') || 'N/A'}
-        About: ${scrapedData.about || 'N/A'}
-        Headlines: ${scrapedData.headlines?.join(', ') || 'N/A'}
-        Slogan: ${scrapedData.slogan || 'N/A'}
-        Team:${teamDetails || 'N/A'}
-        Pages:${scrapedData.pages?.map((p) => p.texts).join(', ') || 'N/A'}
-      `;
-    }
-
-    const systemPrompt = `
-    You are a concise assistant. Answer strictly based on the provided website data.
-    Keep your response short: 3–4 sentences maximum.
-    Do NOT add information outside of the provided context.
-  `;
-
-    const response = await axios.post(
-      this.apiUrl,
-      {
-        model: 'gpt-4o-mini',
-        stream: true,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'system', content: `Website Context:\n${context}` },
-          { role: 'user', content: message },
-        ],
+    private readonly openAiAssistantService: OpenaiAssistantService,
+  ) {
+    this.openai = axios.create({
+      baseURL: 'https://api.openai.com/v1',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2',
       },
-      {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        responseType: 'stream',
-      },
-    );
-
-    response.data.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString();
-
-      let lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // keep last incomplete line
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        if (line.trim() === 'data: [DONE]') {
-          this.chatModel.create({
-            websiteId,
-            userMessage: message,
-            aiResponse: fullResponse,
-            role: 'assistant',
-          });
-          res.end();
-          return;
-        }
-
-        if (line.startsWith('data: ')) {
-          const data = line.replace(/^data:\s*/, '').trim();
-          try {
-            const parsed = JSON.parse(data);
-            const role = parsed.choices[0].delta?.role || 'assistant';
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              fullResponse += content;
-              res.write(`data: ${JSON.stringify({ content, role })}\n\n`);
-            }
-          } catch (err) {
-            console.log('Skipping partial JSON line:', data);
-          }
-        }
-      }
-    });
-
-    response.data.on('end', () => {
-      console.log('Full Response:', fullResponse);
-      console.log('Streaming finished.');
-    });
-
-    response.data.on('error', (err) => {
-      console.error('Stream error:', err);
-      res.end();
     });
   }
 
+  /** Send user message and get AI response */
+  async sendMessage(
+    assistantId: string,
+    websiteId: string,
+    userMessage: string,
+    res: Response,
+  ) {
+    try {
+      // 1. Get assistant for the website
+      const assistant =
+        await this.openAiAssistantService.getAssistant(websiteId);
+      if (!assistant) {
+        throw new NotFoundException(`Assistant not found for ${websiteId}`);
+      }
+
+      console.log('websiteId', websiteId);
+      console.log('assistant', assistant);
+      console.log('userMessage', userMessage);
+
+      // 2. Get or create thread for this website
+      let chatThread = await this.chatModel.findOne({ websiteId });
+      if (!chatThread) {
+        const threadRes = await this.openai.post('/threads', {});
+        chatThread = await this.chatModel.create({
+          websiteId,
+          threadId: threadRes.data.id,
+          messages: [],
+        });
+      }
+      console.log('chatThread', chatThread);
+
+      // 3. Add user message to thread
+      await this.openai.post(`/threads/${chatThread.threadId}/messages`, {
+        role: 'user',
+        content: [{ type: 'text', text: userMessage }],
+        attachments: assistant.fileIds.map((fileId) => ({
+          file_id: fileId,
+          tools: [{ type: 'file_search' }],
+        })),
+      });
+      console.log('user message added to thread');
+
+      // 4. Run assistant on this thread
+      const runRes = await this.openai.post(
+        `/threads/${chatThread.threadId}/runs`,
+        {
+          assistant_id: assistant.assistantId,
+        },
+      );
+      console.log('assistant run started', runRes.data);
+
+      const runId = runRes.data.id;
+      console.log('runId', runId);
+
+      // 5. Poll until run completes
+      let status = 'in_progress';
+      let resultMessage = '';
+      while (status === 'in_progress' || status === 'queued') {
+        const runCheck = await this.openai.get(
+          `/threads/${chatThread.threadId}/runs/${runId}`,
+        );
+        status = runCheck.data.status;
+        if (status === 'completed') {
+          // Fetch latest messages
+          const messagesRes = await this.openai.get(
+            `/threads/${chatThread.threadId}/messages`,
+          );
+          const messages = messagesRes.data.data;
+          const assistantMsg = messages.find((m) => m.role === 'assistant');
+          resultMessage =
+            assistantMsg?.content?.[0]?.text?.value || 'No response.';
+        }
+        if (status === 'failed') {
+          throw new Error(
+            `Assistant run failed: ${runCheck.data.last_error?.message}`,
+          );
+        }
+        if (status === 'in_progress' || status === 'queued') {
+          await new Promise((res) => setTimeout(res, 1000)); // wait 1s before retry
+        }
+      }
+      console.log('run completed', status);
+      chatThread.messages.push(
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: resultMessage },
+      );
+      chatThread.fileIds = [assistant.fileIds[0]];
+      await chatThread.save();
+      console.log('chat saved to DB');
+      console.log('chatThread.messages', chatThread.messages);
+      res.json({
+        websiteId,
+        reply: resultMessage,
+        messages: chatThread.messages, // latest chat log
+      });
+      res.end();
+    } catch (error) {
+      console.log('error', error.response?.data?.error);
+      throw error;
+    }
+  }
+
+  /** Get saved chat history */
   async getChatHistory(websiteId: string) {
-    return this.chatModel.find({ websiteId }).exec();
+    return this.chatModel.findOne({ websiteId }).lean().exec();
   }
 }

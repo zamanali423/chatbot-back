@@ -65,6 +65,9 @@ export class ScrapedData extends Document {
     default: [],
   })
   pages: { url: string; texts: string[] }[];
+
+  @Prop({ type: String, default: 'Pending' })
+  status: string;
 }
 
 export const ScrapedDataSchema = SchemaFactory.createForClass(ScrapedData);
