@@ -12,8 +12,23 @@ export class AuthController {
     return this.authService.register(dto.name, dto.email, dto.password);
   }
 
+  @Post('verify-otp')
+  verifyOtp(@Body() body: { email: string; otp: string }) {
+    return this.authService.verifyOtp(body.email, body.otp);
+  }
+
+  @Post('resend-otp')
+  async resendOtp(@Body('email') email: string) {
+    return this.authService.resendOtp(email);
+  }
+
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('google-login')
+  googleLogin(@Body() body: { idToken: string }) {
+    return this.authService.googleLogin(body.idToken);
   }
 }

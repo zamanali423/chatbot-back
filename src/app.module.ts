@@ -11,6 +11,8 @@ import { OpenAiService } from './openai/openai.service';
 import { OpenAiController } from './openai/openai.controller';
 import { OpenAiModule } from './openai/openai.module';
 import { OpenaiAssistantModule } from './openai_assistant/openai_assistant.module';
+import { MailService } from './mail/mail.service';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -37,8 +39,10 @@ import { OpenaiAssistantModule } from './openai_assistant/openai_assistant.modul
     OpenAiModule,
     ScraperModule,
     OpenaiAssistantModule,
+    MailModule,
   ],
   controllers: [AppController, OpenAiController],
-  providers: [AppService, OpenAiService],
+  providers: [AppService, OpenAiService, MailService],
+  exports: [MailService],
 })
 export class AppModule {}

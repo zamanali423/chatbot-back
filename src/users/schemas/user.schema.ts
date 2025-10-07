@@ -12,8 +12,23 @@ export class User {
   @Prop({ required: true, unique: true, lowercase: true })
   email: string;
 
-  @Prop({ required: true })
+  @Prop()
   password: string;
+
+  @Prop()
+  otp?: string;
+
+  @Prop({ default: false })
+  otpVerified: boolean;
+
+  @Prop({ default: 'local' })
+  loginProvider: string;
+
+  @Prop()
+  picture?: string;
+
+  @Prop()
+  otpExpiresAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
