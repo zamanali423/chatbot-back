@@ -7,6 +7,7 @@ import {
   ScrapedDataSchema,
 } from '../scraper/schemas/scraped-data.schema';
 import { Assistant, AssistantSchema } from './schemas/assistant.schema';
+import { ScraperService } from '../scraper/scraper.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { Assistant, AssistantSchema } from './schemas/assistant.schema';
       { name: Assistant.name, schema: AssistantSchema }, // ✅ register AssistantModel
     ]),
   ],
-  providers: [OpenaiAssistantService],
+  providers: [OpenaiAssistantService, ScraperService],
   controllers: [OpenaiAssistantController],
   exports: [OpenaiAssistantService],
 })

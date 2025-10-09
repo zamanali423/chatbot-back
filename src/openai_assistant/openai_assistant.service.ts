@@ -143,6 +143,33 @@ ${(data.pages || []).map((p) => `Page: ${p.url}\nTexts: ${p.texts.join(' | ')}`)
     }
   }
 
+  async updateAssistant(websiteId: string) {
+    const assistant = await this.getAssistant(websiteId);
+    if (!assistant) {
+      throw new NotFoundException(`Assistant not found for ${websiteId}`);
+    }
+    const updatedAssistant = await this.openai.patch(
+      `/assistants/${assistant.assistantId}`,
+      {
+        name: `Assistant_${assistant.websiteUrl}`,
+        instructions: `You are a helpful assistant specialized for ${assistant.websiteUrl}. Use the uploaded file for context.`,
+        model: 'gpt-4o-mini',
+        tools: [{ type: 'code_interpreter' }, { type: 'file_search' }],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.configService.get<string>(
+            'OPENAI_API_KEY',
+          )}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v2',
+        },
+      },
+    );
+    console.log('Assistant updated', updatedAssistant);
+    return updatedAssistant?.data;
+  }
+
   /**
    * Optional: List all assistants from DB
    */

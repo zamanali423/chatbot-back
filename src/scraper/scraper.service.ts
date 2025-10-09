@@ -240,6 +240,41 @@ export class ScraperService {
     return data;
   }
 
+  async updateScrapedData(websiteId: string) {
+    try {
+      // 1️⃣ Find existing website record
+      const website = await this.scrapedDataModel.findById(websiteId);
+      if (!website) {
+        throw new Error(`Website with ID ${websiteId} not found`);
+      }
+
+      // 2️⃣ Perform fresh scraping
+      const newScrapedData = await this.scrapeWebsite(
+        website.url,
+        website.userId,
+        website.category,
+      );
+
+      // 3️⃣ Update the existing record with new content
+      website.set({
+        ...newScrapedData,
+        updatedAt: new Date(),
+      });
+
+      // 4️⃣ Save and return updated record
+      const updatedWebsite = await website.save();
+
+      return {
+        success: true,
+        message: 'Scraped data updated successfully',
+        website: updatedWebsite,
+      };
+    } catch (error) {
+      console.error('❌ Error updating scraped data:', error.message);
+      throw new Error(`Failed to update scraped data: ${error.message}`);
+    }
+  }
+
   async scrapeAll(userId: string) {
     return this.scrapedDataModel.find({ userId });
   }

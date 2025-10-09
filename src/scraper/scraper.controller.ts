@@ -22,6 +22,15 @@ export class ScraperController {
     return this.scraperService.scrapeWebsite(url, req?.user?.id, category);
   }
 
+  // @UseGuards(AuthGuard('jwt'))
+  // @Get('update')
+  // async updateScrapedData(
+  //   @Req() req: any,
+  //   @Query('websiteId') websiteId: string,
+  // ) {
+  //   return this.scraperService.updateScrapedData(websiteId);
+  // }
+
   @UseGuards(AuthGuard('jwt'))
   @Get('scrape-all')
   async scrapeAll(@Req() req: any) {
